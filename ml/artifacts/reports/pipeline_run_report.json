@@ -1,0 +1,12 @@
+{
+  "run_id": "ae4fb570-77c7-4110-9e99-bb2c84df481f",
+  "model_version": "2026-09-19.1",
+  "attempted_tuples": 367,
+  "prediction_success": 357,
+  "prediction_failed": 10,
+  "narrative_sample_size": 20,
+  "narrative_success": 20,
+  "narrative_failed": 0,
+  "narrative_skipped_ollama_unavailable": 0,
+  "status": "published"
+}
