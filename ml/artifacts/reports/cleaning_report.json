@@ -1,0 +1,39 @@
+{
+  "input_row_count": 607,
+  "output_row_count": 565,
+  "duplicate_rows_removed": 42,
+  "columns_dropped_redundant": [
+    "Unnamed: 0"
+  ],
+  "columns_dropped_leakage": [
+    "salary",
+    "salary_currency"
+  ],
+  "missing_values_before_cleaning": {
+    "work_year": 0,
+    "experience_level": 0,
+    "employment_type": 0,
+    "job_title": 0,
+    "salary": 0,
+    "salary_currency": 0,
+    "salary_in_usd": 0,
+    "employee_residence": 0,
+    "remote_ratio": 0,
+    "company_location": 0,
+    "company_size": 0
+  },
+  "target_column": "salary_in_usd",
+  "final_feature_columns": [
+    "work_year",
+    "experience_level",
+    "employment_type",
+    "job_title",
+    "employee_residence",
+    "remote_ratio",
+    "company_location",
+    "company_size"
+  ],
+  "generated_at": "2026-09-19T17:52:23.514626+00:00",
+  "source_file": "ml/data/raw/ds_salaries.csv",
+  "source_content_sha256": "6462a0cfed466651f9109f429d696e3d0a58f9a909130177a242c6a6665b05f6"
+}

@@ -5,12 +5,13 @@ and a human-readable summary (docs/data_inspection.md) WITHOUT modifying or
 writing back to the raw file. Run before any cleaning code is written.
 """
 
-import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pandas as pd
+
+from ml.src.data.hashing import sha256_of_file
 
 RAW_PATH = Path("ml/data/raw/ds_salaries.csv")
 REPORT_JSON_PATH = Path("ml/artifacts/reports/data_profile.json")
@@ -20,14 +21,6 @@ EXPECTED_EXPERIENCE_LEVELS = {"EN", "MI", "SE", "EX"}
 EXPECTED_EMPLOYMENT_TYPES = {"FT", "PT", "CT", "FL"}
 EXPECTED_COMPANY_SIZES = {"S", "M", "L"}
 EXPECTED_REMOTE_RATIOS = {0, 50, 100}
-
-
-def sha256_of_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as f:
-        for chunk in iter(lambda: f.read(65536), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def iqr_outlier_bounds(series: pd.Series) -> tuple[float, float]:
