@@ -28,6 +28,18 @@ class PredictionInputError(ValueError):
         super().__init__(message)
 
 
+class NarrationUnavailableError(RuntimeError):
+    """The /narrate endpoint couldn't produce a narrative: Ollama is
+    unreachable, or generation failed schema validation on every retry.
+    Distinct from PredictionInputError -- this is never the caller's
+    fault, so it maps to 503, not 422."""
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(message)
+
+
 def error_body(code: str, message: str, details: dict | None = None) -> dict:
     return {"error": {"code": code, "message": message, "details": details or {}}}
 
@@ -36,6 +48,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(PredictionInputError)
     async def handle_prediction_input_error(request: Request, exc: PredictionInputError):
         return JSONResponse(status_code=422, content=error_body(exc.code, exc.message, exc.details))
+
+    @app.exception_handler(NarrationUnavailableError)
+    async def handle_narration_unavailable_error(request: Request, exc: NarrationUnavailableError):
+        return JSONResponse(status_code=503, content=error_body(exc.code, exc.message))
 
     @app.exception_handler(RequestValidationError)
     async def handle_validation_error(request: Request, exc: RequestValidationError):

@@ -6,6 +6,7 @@ import { useLatestPublishedRun } from "./lib/queries";
 import { ExplorePage } from "./pages/ExplorePage";
 import { MethodologyPage } from "./pages/MethodologyPage";
 import { OverviewPage } from "./pages/OverviewPage";
+import { PredictPage } from "./pages/PredictPage";
 import { ResultDetailPage } from "./pages/ResultDetailPage";
 
 const queryClient = new QueryClient({
@@ -26,6 +27,7 @@ function Shell() {
       <Routes>
         <Route path="/" element={<OverviewPage />} />
         <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/predict" element={<PredictPage />} />
         <Route path="/results/:id" element={<ResultDetailPage />} />
         <Route path="/methodology" element={<MethodologyPage />} />
       </Routes>

@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.app.api.routes import router
 from backend.app.core.config import settings
 from backend.app.core.errors import register_exception_handlers
+from backend.app.services.narrator import narrator_service
 from backend.app.services.predictor import predictor_service
 
 logging.basicConfig(level=settings.log_level)
@@ -21,6 +22,15 @@ async def lifespan(app: FastAPI):
         # The service still boots so /health can report model_loaded=False
         # rather than crash-looping the whole container over a missing artifact.
         logger.exception("Failed to load model artifact at startup")
+
+    try:
+        narrator_service.load()
+    except Exception:
+        # /narrate degrades to a clean 503 (get_narrator dependency) rather
+        # than the app failing to boot -- a deployment without the cleaned
+        # dataset or scripts/ still serves /predict, /health, /model/info.
+        logger.warning("Narrator service unavailable at startup (dataset missing or scripts/ not present)")
+
     yield
 
 

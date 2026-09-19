@@ -1,6 +1,9 @@
-# Minimal dependency set for the independently deployed FastAPI service.
-# Deliberately excludes supabase/httpx: the backend only loads the serialized
-# model pipeline and serves predictions, it does not call Supabase or Ollama.
+# Dependency set for the independently deployed FastAPI service.
+# Deliberately excludes supabase: the backend never reads/writes Supabase,
+# that's scripts/persist.py's job. httpx IS needed here -- /narrate (see
+# backend/app/services/narrator.py) calls Ollama's REST API via
+# scripts.llm_client.OllamaClient. /health, /model/info, and /predict never
+# touch httpx or Ollama and keep working even if Ollama is unreachable.
 
 fastapi==0.141.1
 uvicorn[standard]==0.53.0
@@ -10,3 +13,4 @@ scikit-learn==1.9.1
 joblib==1.6.0
 pandas==3.0.6
 numpy==2.5.3
+httpx==0.28.1

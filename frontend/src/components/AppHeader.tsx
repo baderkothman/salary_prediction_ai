@@ -13,6 +13,9 @@ export function AppHeader({ modelVersion }: { modelVersion?: string }) {
             <NavLink to="/explore" className="app-header__link">
               Explore
             </NavLink>
+            <NavLink to="/predict" className="app-header__link">
+              Predict
+            </NavLink>
             <NavLink to="/methodology" className="app-header__link">
               Methodology
             </NavLink>

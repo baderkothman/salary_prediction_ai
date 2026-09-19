@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     backend_port: int = 8000
     cors_allowed_origins: str = "http://localhost:5173"
 
+    # /narrate only: needs the cleaned dataset (comparison-group stats) and a
+    # reachable Ollama instance. /health, /model/info, /predict never touch these.
+    processed_dataset_path: Path = Path("ml/data/processed/salaries_clean.csv")
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "llama3.2:latest"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
