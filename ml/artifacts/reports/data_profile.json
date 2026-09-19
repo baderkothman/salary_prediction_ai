@@ -1,0 +1,292 @@
+{
+  "generated_at": "2026-09-19T17:49:19.454275+00:00",
+  "source_file": "ml/data/raw/ds_salaries.csv",
+  "content_sha256": "6462a0cfed466651f9109f429d696e3d0a58f9a909130177a242c6a6665b05f6",
+  "row_count": 607,
+  "column_count": 12,
+  "columns": [
+    "Unnamed: 0",
+    "work_year",
+    "experience_level",
+    "employment_type",
+    "job_title",
+    "salary",
+    "salary_currency",
+    "salary_in_usd",
+    "employee_residence",
+    "remote_ratio",
+    "company_location",
+    "company_size"
+  ],
+  "column_profile": {
+    "Unnamed: 0": {
+      "dtype": "int64",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 607
+    },
+    "work_year": {
+      "dtype": "int64",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 3
+    },
+    "experience_level": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 4
+    },
+    "employment_type": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 4
+    },
+    "job_title": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 50
+    },
+    "salary": {
+      "dtype": "int64",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 272
+    },
+    "salary_currency": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 17
+    },
+    "salary_in_usd": {
+      "dtype": "int64",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 369
+    },
+    "employee_residence": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 57
+    },
+    "remote_ratio": {
+      "dtype": "int64",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 3
+    },
+    "company_location": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 50
+    },
+    "company_size": {
+      "dtype": "str",
+      "null_count": 0,
+      "null_pct": 0.0,
+      "n_unique": 3
+    }
+  },
+  "full_row_duplicate_count": 0,
+  "business_key_duplicate_count": 42,
+  "numeric_profile": {
+    "work_year": {
+      "min": 2020.0,
+      "max": 2022.0,
+      "mean": 2021.4052718286655,
+      "median": 2022.0,
+      "std": 0.692132985452652,
+      "p25": 2021.0,
+      "p75": 2022.0,
+      "iqr_outlier_bounds": [
+        2019.5,
+        2023.5
+      ],
+      "iqr_outlier_count": 0
+    },
+    "salary": {
+      "min": 4000.0,
+      "max": 30400000.0,
+      "mean": 324000.0626029654,
+      "median": 115000.0,
+      "std": 1544357.4866358503,
+      "p25": 70000.0,
+      "p75": 165000.0,
+      "iqr_outlier_bounds": [
+        -72500.0,
+        307500.0
+      ],
+      "iqr_outlier_count": 44
+    },
+    "salary_in_usd": {
+      "min": 2859.0,
+      "max": 600000.0,
+      "mean": 112297.86985172982,
+      "median": 101570.0,
+      "std": 70957.25941139569,
+      "p25": 62726.0,
+      "p75": 150000.0,
+      "iqr_outlier_bounds": [
+        -68185.0,
+        280911.0
+      ],
+      "iqr_outlier_count": 10
+    },
+    "remote_ratio": {
+      "min": 0.0,
+      "max": 100.0,
+      "mean": 70.92257001647447,
+      "median": 100.0,
+      "std": 40.70913004022121,
+      "p25": 50.0,
+      "p75": 100.0,
+      "iqr_outlier_bounds": [
+        -25.0,
+        175.0
+      ],
+      "iqr_outlier_count": 0
+    }
+  },
+  "categorical_profile": {
+    "experience_level": {
+      "n_unique": 4,
+      "top_values": {
+        "SE": 280,
+        "MI": 213,
+        "EN": 88,
+        "EX": 26
+      }
+    },
+    "employment_type": {
+      "n_unique": 4,
+      "top_values": {
+        "FT": 588,
+        "PT": 10,
+        "CT": 5,
+        "FL": 4
+      }
+    },
+    "job_title": {
+      "n_unique": 50,
+      "top_values": {
+        "Data Scientist": 143,
+        "Data Engineer": 132,
+        "Data Analyst": 97,
+        "Machine Learning Engineer": 41,
+        "Research Scientist": 16,
+        "Data Science Manager": 12,
+        "Data Architect": 11,
+        "Machine Learning Scientist": 8,
+        "Big Data Engineer": 8,
+        "Data Science Consultant": 7,
+        "Director of Data Science": 7,
+        "AI Scientist": 7,
+        "Principal Data Scientist": 7,
+        "Data Analytics Manager": 7,
+        "Lead Data Engineer": 6
+      }
+    },
+    "salary_currency": {
+      "n_unique": 17,
+      "top_values": {
+        "USD": 398,
+        "EUR": 95,
+        "GBP": 44,
+        "INR": 27,
+        "CAD": 18,
+        "JPY": 3,
+        "PLN": 3,
+        "TRY": 3,
+        "HUF": 2,
+        "CNY": 2,
+        "MXN": 2,
+        "DKK": 2,
+        "SGD": 2,
+        "BRL": 2,
+        "AUD": 2
+      }
+    },
+    "employee_residence": {
+      "n_unique": 57,
+      "top_values": {
+        "US": 332,
+        "GB": 44,
+        "IN": 30,
+        "CA": 29,
+        "DE": 25,
+        "FR": 18,
+        "ES": 15,
+        "GR": 13,
+        "JP": 7,
+        "PK": 6,
+        "PT": 6,
+        "BR": 6,
+        "NL": 5,
+        "PL": 4,
+        "RU": 4
+      }
+    },
+    "remote_ratio": {
+      "n_unique": 3,
+      "top_values": {
+        "100": 381,
+        "0": 127,
+        "50": 99
+      }
+    },
+    "company_location": {
+      "n_unique": 50,
+      "top_values": {
+        "US": 355,
+        "GB": 47,
+        "CA": 30,
+        "DE": 28,
+        "IN": 24,
+        "FR": 15,
+        "ES": 14,
+        "GR": 11,
+        "JP": 6,
+        "NL": 4,
+        "AT": 4,
+        "PT": 4,
+        "PL": 4,
+        "PK": 3,
+        "AE": 3
+      }
+    },
+    "company_size": {
+      "n_unique": 3,
+      "top_values": {
+        "M": 326,
+        "L": 198,
+        "S": 83
+      }
+    }
+  },
+  "invalid_values": {
+    "non_positive_salary_in_usd": 0,
+    "non_positive_salary": 0,
+    "unexpected_experience_level": [],
+    "unexpected_employment_type": [],
+    "unexpected_company_size": [],
+    "unexpected_remote_ratio": []
+  },
+  "target_variable": "salary_in_usd",
+  "leakage_candidates": [
+    "salary",
+    "salary_currency"
+  ],
+  "redundant_columns": [
+    "Unnamed: 0"
+  ],
+  "high_cardinality_columns": [
+    "job_title",
+    "employee_residence",
+    "company_location"
+  ]
+}
