@@ -1,0 +1,24 @@
+# Full local development environment: ml training, backend API, and the
+# local generation pipeline scripts (Ollama + Supabase + API client).
+# Install with: pip install -r requirements-dev.txt
+
+# --- ml / data ---
+pandas==3.0.6
+numpy==2.5.3
+scikit-learn==1.9.1
+joblib==1.6.0
+scipy==1.18.1
+
+# --- backend API ---
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+
+# --- pipeline scripts (API client, Ollama, Supabase persistence) ---
+httpx==0.28.1
+supabase==2.31.0
+python-dotenv==1.2.3
+
+# --- testing ---
+pytest==9.1.1

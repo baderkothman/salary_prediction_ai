@@ -1,0 +1,12 @@
+# Minimal dependency set for the independently deployed FastAPI service.
+# Deliberately excludes supabase/httpx: the backend only loads the serialized
+# model pipeline and serves predictions, it does not call Supabase or Ollama.
+
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+scikit-learn==1.9.1
+joblib==1.6.0
+pandas==3.0.6
+numpy==2.5.3
