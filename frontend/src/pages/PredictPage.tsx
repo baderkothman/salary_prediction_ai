@@ -11,7 +11,14 @@ import { PageContainer, PageHeader } from "../components/PageContainer";
 import { InvalidChartFallback, SalaryChart } from "../components/SalaryChart";
 import { SupportingStatistics } from "../components/SupportingStatistics";
 import { ApiError, fetchModelInfo, fetchNarrative, fetchPrediction, type PredictionInputs } from "../lib/api";
-import { formatCurrency, remoteRatioLabel } from "../lib/format";
+import {
+  COMPANY_SIZE_LABELS,
+  EMPLOYMENT_TYPE_LABELS,
+  EXPERIENCE_LEVEL_LABELS,
+  formatCurrency,
+  labelFor,
+  remoteRatioLabel,
+} from "../lib/format";
 import { ChartSpecSchema } from "../lib/schemas";
 
 const EMPTY_FORM: Partial<PredictionInputs> = {};
@@ -91,7 +98,7 @@ export function PredictPage() {
               </option>
               {info.categorical_domains.experience_level.map((v) => (
                 <option key={v} value={v}>
-                  {v}
+                  {labelFor(EXPERIENCE_LEVEL_LABELS, v)} ({v})
                 </option>
               ))}
             </select>
@@ -109,7 +116,7 @@ export function PredictPage() {
               </option>
               {info.categorical_domains.employment_type.map((v) => (
                 <option key={v} value={v}>
-                  {v}
+                  {labelFor(EMPLOYMENT_TYPE_LABELS, v)} ({v})
                 </option>
               ))}
             </select>
@@ -127,7 +134,7 @@ export function PredictPage() {
               </option>
               {info.categorical_domains.company_size.map((v) => (
                 <option key={v} value={v}>
-                  {v}
+                  {labelFor(COMPANY_SIZE_LABELS, v)} ({v})
                 </option>
               ))}
             </select>
