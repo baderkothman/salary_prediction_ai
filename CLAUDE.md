@@ -20,7 +20,7 @@ An end-to-end ML salary-prediction system for data-science jobs (Kaggle `ruchi79
 - **Local generation pipeline** (not deployed): cleans data, trains a `DecisionTreeRegressor` via scikit-learn `Pipeline`, calls a local FastAPI instance to get predictions for every distinct observed feature tuple, builds deterministic comparison statistics in Python, sends those facts to a **local Ollama** model to get a structured narrative + chart spec, validates that output, and publishes it to Supabase.
 - **Deployed consumption layer**: a React/Vite/TypeScript dashboard that reads only from Supabase (published runs), plus an **independently deployed FastAPI** instance (Docker) serving the same model artifact for direct API evaluation.
 
-The React dashboard never calls Ollama, the local pipeline, or the FastAPI predict endpoint at runtime — it only reads persisted, published data from Supabase. There is deliberately no live "prediction form" page in the frontend; see Deviations below.
+Every page except one reads only Supabase at runtime. The one exception — `/predict` (`frontend/src/pages/PredictPage.tsx`) — was added later at the user's explicit request, overriding the invariant below; see Deviations.
 
 ## Architectural invariants (do not violate without documenting the change — `architecture.md` §12)
 
@@ -30,7 +30,7 @@ The React dashboard never calls Ollama, the local pipeline, or the FastAPI predi
 4. Preprocessing and the model are serialized together in one scikit-learn `Pipeline` so they can never drift apart.
 5. Ollama runs locally only, used during pre-generation — never called live from the deployed dashboard.
 6. Dashboard data is always persisted (to Supabase) before it is displayed.
-7. React reads from Supabase only; it does not generate analysis live and does not call the FastAPI predict endpoint.
+7. React reads from Supabase only for every page except `/predict` (user-requested exception, see Deviations) — no other page generates analysis live or calls the FastAPI predict endpoint.
 8. The deployed FastAPI service is an independent deliverable (own Dockerfile, own minimal `requirements.txt`, zero import dependency on `ml/`), functional even if the dashboard is down.
 9. A `pipeline_runs` row starts as `building` and is only flipped to `published` after a completeness check (`scripts/persist.py::decide_final_status`, ≥80% prediction success ratio) — partial runs must never be exposed to the dashboard. RLS enforces this at the database level, not just in application code.
 10. LLM output is untrusted structured data: validate with Pydantic before persistence (`scripts/llm_client.py`), validate again with Zod on the frontend before rendering (`frontend/src/lib/schemas.ts`); never execute LLM-generated code and never render narrative via `dangerouslySetInnerHTML`.
@@ -39,16 +39,20 @@ The React dashboard never calls Ollama, the local pipeline, or the FastAPI predi
 
 ```text
 frontend/src/
-  lib/        supabase.ts (browser client), schemas.ts (Zod), queries.ts (TanStack Query hooks,
-              server-side filtering/pagination), stats.ts, format.ts
+  lib/        supabase.ts (browser client), api.ts (the one client hitting the backend, for /predict
+              only), schemas.ts (Zod), queries.ts (TanStack Query hooks, server-side filtering/
+              pagination), stats.ts, format.ts
   components/ AppHeader, PageContainer, MetricCard, FilterBar, ResultsTable, SalaryChart
               (allowlisted bar/horizontal_bar/line only), NarrativeSection, LimitationsCallout, ...
-  pages/      OverviewPage, ExplorePage, ResultDetailPage, MethodologyPage
+  pages/      OverviewPage, ExplorePage, ResultDetailPage, MethodologyPage, PredictPage (Supabase-only
+              except this one -- see Deviations)
   test/setup.ts  jsdom + RTL cleanup (explicit afterEach, no vitest `globals: true`) + ResizeObserver polyfill for Recharts
 backend/
   app/{core,schemas,services,api}/  config.py, errors.py (stable {error:{code,message,details}} shape),
-                                     predictor.py (loads joblib+metadata, zero ml/ import), routes.py, dependencies.py
-  requirements.txt   minimal deployable set; Dockerfile builds from repo root
+                                     predictor.py (loads joblib+metadata, zero ml/ import),
+                                     narrator.py (only /narrate; imports scripts/, needs Ollama),
+                                     routes.py, dependencies.py
+  requirements.txt   deployable set (includes httpx for narrator.py); Dockerfile builds from repo root
 ml/
   data/{raw,processed}/, src/{data,features,training,evaluation}/, artifacts/{model,reports}/, tests/
 scripts/    local generation pipeline: api_client.py, build_context.py, llm_client.py, persist.py, run_pipeline.py
@@ -73,11 +77,11 @@ python -m ml.src.data.clean           # -> ml/data/processed/salaries_clean.csv
 python -m ml.src.training.train       # -> ml/artifacts/model/{salary_model.joblib,model_metadata.json}
 uvicorn backend.app.main:app --reload --port 8000
 python -m scripts.run_pipeline        # needs the API + Ollama both running
-pytest                                 # 61 tests
+pytest                                 # 66 tests
 ruff check .
 
 # Frontend
-cd frontend && npm install && npm run dev && npm run build && npm test   # 42 tests (vitest)
+cd frontend && npm install && npm run dev && npm run build && npm test   # 48 tests (vitest)
 
 # Docker (backend, independent deployment)
 docker build -f backend/Dockerfile -t salary-prediction-api .   # from repo root
@@ -97,8 +101,12 @@ supabase login --token <token> && supabase link --project-ref <ref> && supabase 
 - **Error contracts**: FastAPI never returns raw stack traces; every error path (domain validation, FastAPI's own validation, HTTP errors, unexpected exceptions) returns the same `{"error": {"code", "message", "details"}}` shape.
 - **Model artifact trust**: `joblib`/pickle can execute code on load — only load artifacts produced by this project's own trusted pipeline.
 - **Frontend test setup**: `vitest.config.ts` does not set `test.globals: true` (every test file imports `describe/it/expect` explicitly), so `@testing-library/react`'s automatic cleanup never auto-registers — `src/test/setup.ts` wires `afterEach(cleanup)` explicitly. Omitting this causes DOM from prior tests to silently accumulate and produces "multiple elements found" failures that look unrelated to the real cause.
+- **`pipeline_runs.model_metrics` is nested `{train: {...}, test: {...}}`**, not flat `{mae, rmse, r2}` — it's stored exactly as `train.py` writes `model_metadata.json`'s `metrics` field. A real bug shipped here once: the frontend Zod schema and its test fixtures both assumed the flat shape, agreeing with each other while disagreeing with the real data, so no test caught it — only opening the actual running app did. `frontend/src/lib/schemas.test.ts` now has a regression test built from a real Supabase row.
+- **`/narrate` needs the cleaned dataset (`ml/data/processed/salaries_clean.csv`) and a reachable Ollama** in addition to the model artifact `/predict` needs — a deployment that omits either still boots and serves `/predict`/`/health`/`/model/info`, but `/narrate` returns a 503 (`NARRATOR_UNAVAILABLE`). Distinguish `OLLAMA_UNAVAILABLE` (unreachable) from `NARRATIVE_GENERATION_FAILED` (reachable, never returned valid JSON after retries) when debugging.
 
 ## Deviations from the original spec docs (documented, not silent)
 
-- **No live "Prediction page."** A later master prompt's Phase 10 asked for a form that calls FastAPI directly from the browser. This contradicts `architecture.md` invariant #7 and `prd.md`'s explicit non-goal ("React-to-FastAPI prediction requests as part of the dashboard flow"), and `design.md`'s own information architecture never included a `/predict` route. The foundational docs won; the dashboard stays Supabase-only.
+- **Live "Prediction page" (`/predict`) exists**, calling the backend directly from the browser. This was initially built and then deliberately *omitted* because it contradicts `architecture.md` invariant #7 and `prd.md`'s non-goal ("React-to-FastAPI prediction requests as part of the dashboard flow") — but the user then explicitly asked for exactly this feature, which is a legitimate override of that call: the user is the final authority on product scope, not the spec docs. Implemented as narrowly as possible:
+  - New backend `GET /narrate` endpoint (`backend/app/services/narrator.py`) — the *only* thing in `backend/` that imports from `scripts/` (`build_context.py`, `llm_client.py`) and needs Ollama reachable. `/health`, `/model/info`, `/predict` are untouched and still fully independent per invariant #8; `/narrate` degrades to a clean 503 rather than failing app startup if the dataset or `scripts/` isn't present.
+  - Every other page is still Supabase-only. This is a single, contained, documented exception — not a reversal of the architecture.
 - **Directory layout** (`frontend/`/`backend/`/`ml/`/`scripts/`) supersedes `architecture.md` §4's `apps/`/`pipeline/` naming, again per a later master prompt with no strong technical reason to refuse it.
