@@ -25,10 +25,12 @@ export const PipelineRunSchema = z.object({
   dataset_hash: z.string(),
   llm_model: z.string(),
   prompt_version: z.string(),
+  // Stored exactly as ml/src/training/train.py writes model_metadata.json's
+  // "metrics" field (scripts/persist.py passes it straight through) --
+  // both train and test splits, not just a flat test-only shape.
   model_metrics: z.object({
-    mae: z.number(),
-    rmse: z.number(),
-    r2: z.number(),
+    train: z.object({ mae: z.number(), rmse: z.number(), r2: z.number() }),
+    test: z.object({ mae: z.number(), rmse: z.number(), r2: z.number() }),
   }),
   coverage_summary: z.record(z.string(), z.unknown()).nullable().optional(),
   created_at: z.string(),

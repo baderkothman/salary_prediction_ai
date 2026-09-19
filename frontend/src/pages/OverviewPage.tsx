@@ -100,8 +100,8 @@ export function OverviewPage() {
 
       <div className="model-metrics-note">
         <span>Model evaluation (held-out test set): </span>
-        MAE {formatCurrency(run.model_metrics.mae)} · RMSE {formatCurrency(run.model_metrics.rmse)} · R²{" "}
-        {run.model_metrics.r2.toFixed(2)}
+        MAE {formatCurrency(run.model_metrics.test.mae)} · RMSE {formatCurrency(run.model_metrics.test.rmse)} · R²{" "}
+        {run.model_metrics.test.r2.toFixed(2)}
       </div>
     </PageContainer>
   );

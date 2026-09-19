@@ -32,7 +32,10 @@ const PUBLISHED_RUN = {
   dataset_hash: "hash",
   llm_model: "llama3.2:latest",
   prompt_version: "v1",
-  model_metrics: { mae: 34506.8, rmse: 48108.7, r2: 0.488 },
+  model_metrics: {
+    train: { mae: 34084.1, rmse: 49757.9, r2: 0.54 },
+    test: { mae: 34506.8, rmse: 48108.7, r2: 0.488 },
+  },
   coverage_summary: null,
   created_at: "2026-09-19T00:00:00Z",
   published_at: "2026-09-19T01:00:00Z",

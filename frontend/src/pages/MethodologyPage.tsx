@@ -52,8 +52,8 @@ export function MethodologyPage() {
           {runQuery.data && (
             <p>
               Current model <strong>{runQuery.data.model_version}</strong>, evaluated {formatDateTime(runQuery.data.created_at)}: MAE{" "}
-              {formatCurrency(runQuery.data.model_metrics.mae)}, RMSE {formatCurrency(runQuery.data.model_metrics.rmse)}, R²{" "}
-              {runQuery.data.model_metrics.r2.toFixed(2)}.
+              {formatCurrency(runQuery.data.model_metrics.test.mae)}, RMSE {formatCurrency(runQuery.data.model_metrics.test.rmse)}, R²{" "}
+              {runQuery.data.model_metrics.test.r2.toFixed(2)}.
             </p>
           )}
         </section>
