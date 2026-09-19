@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 import joblib
 import numpy as np
@@ -7,10 +6,10 @@ import pandas as pd
 import pytest
 from sklearn.pipeline import Pipeline
 
-from ml.src.features.build_features import FEATURE_COLUMNS, build_preprocessor
+from ml.src.features.build_features import FEATURE_COLUMNS
 from ml.src.training.train import (
-    MODEL_PATH,
     METADATA_PATH,
+    MODEL_PATH,
     build_pipeline,
     extract_categorical_domains,
 )

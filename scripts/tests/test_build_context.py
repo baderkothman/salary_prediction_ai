@@ -1,5 +1,4 @@
 import pandas as pd
-import pytest
 
 from scripts.build_context import build_analysis_context, find_comparison_group
 

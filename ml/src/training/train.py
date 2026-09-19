@@ -71,7 +71,7 @@ def extract_categorical_domains(fitted_pipeline: Pipeline) -> dict:
     encoder = fitted_pipeline.named_steps["preprocessor"].named_transformers_["categorical"]
     return {
         col: sorted(cats.tolist())
-        for col, cats in zip(CATEGORICAL_FEATURES, encoder.categories_)
+        for col, cats in zip(CATEGORICAL_FEATURES, encoder.categories_, strict=True)
     }
 
 
@@ -124,9 +124,9 @@ def main() -> None:
         "metrics": {"train": train_metrics, "test": test_metrics},
         "random_state": RANDOM_STATE,
         "dataset_hash": sha256_of_file(PROCESSED_PATH),
-        "dataset_row_count": int(len(df)),
-        "train_row_count": int(len(X_train)),
-        "test_row_count": int(len(X_test)),
+        "dataset_row_count": len(df),
+        "train_row_count": len(X_train),
+        "test_row_count": len(X_test),
         "trained_at": datetime.now(timezone.utc).isoformat(),
     }
 

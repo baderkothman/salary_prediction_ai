@@ -1,7 +1,5 @@
-import json
 
 import httpx
-import pytest
 
 from scripts.api_client import SalaryApiClient, run_batch
 

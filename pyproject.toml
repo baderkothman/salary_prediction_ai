@@ -1,0 +1,15 @@
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+select = ["F", "I", "B", "BLE", "RUF"]
+ignore = [
+    "B008", # FastAPI's dependency injection requires calling Depends()/Query() in argument defaults.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/llm_client.py" = [
+    "BLE001", # Deliberately broad: catches any pydantic.ValidationError-like failure from a
+              # third-party model without importing pydantic just for the exception type, since
+              # a malformed LLM generation must be retried/reported, never allowed to crash the run.
+]

@@ -39,7 +39,7 @@ def compute_comparison_stats(group: pd.DataFrame, description: str) -> dict:
     salaries = group["salary_in_usd"]
     return {
         "description": description,
-        "sample_size": int(len(group)),
+        "sample_size": len(group),
         "mean_salary_usd": round(float(salaries.mean()), 2),
         "median_salary_usd": round(float(salaries.median()), 2),
         "p25_salary_usd": round(float(salaries.quantile(0.25)), 2),
