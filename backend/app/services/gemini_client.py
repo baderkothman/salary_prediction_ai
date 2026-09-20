@@ -33,7 +33,12 @@ logger = logging.getLogger("salary_api")
 # quality loss for this narration task. Revisit if 3.6-flash's rollout
 # congestion settles down.
 DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite"
-DEFAULT_TIMEOUT_SECONDS = 30.0
+# Every successful live call measured 2-6s. One request took 89s in
+# production because 3 outer attempts x up to 3 inner transport retries
+# each could ride a slow response close to a 30s timeout before failing
+# over. A tighter per-attempt timeout fails a stuck attempt faster,
+# capping the worst case without changing retry counts.
+DEFAULT_TIMEOUT_SECONDS = 12.0
 DEFAULT_MAX_ATTEMPTS = 3
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
