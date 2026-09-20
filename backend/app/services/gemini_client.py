@@ -18,6 +18,7 @@ Deployment section.
 
 import json
 import logging
+import time
 
 import httpx
 
@@ -29,6 +30,13 @@ DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_ATTEMPTS = 3
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+
+# Confirmed live: Gemini returns a transient 503 ("high demand") often
+# enough that retrying once or twice measurably helps -- observed exactly
+# this in production and it succeeded on the very next attempt.
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+DEFAULT_TRANSPORT_RETRIES = 2
+DEFAULT_BACKOFF_SECONDS = 1.0
 
 
 class GeminiUnavailableError(RuntimeError):
@@ -43,11 +51,13 @@ class GeminiClient:
         model: str = DEFAULT_GEMINI_MODEL,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         transport: httpx.BaseTransport | None = None,
+        backoff_seconds: float = DEFAULT_BACKOFF_SECONDS,
     ):
         self._api_key = api_key
         self._model = model
         self._timeout = timeout_seconds
         self._transport = transport
+        self._backoff_seconds = backoff_seconds
 
     def _call(self, analysis_context: dict) -> str:
         # Same framing as OllamaClient: a bare JSON blob as the whole
@@ -69,21 +79,42 @@ class GeminiClient:
             },
         }
         url = f"{GEMINI_API_BASE}/models/{self._model}:generateContent"
+        last_error: str | None = None
 
-        try:
-            with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
-                response = client.post(url, params={"key": self._api_key}, json=payload)
-        except httpx.HTTPError as exc:
-            raise GeminiUnavailableError(f"Could not reach Gemini: {exc}") from exc
+        for attempt in range(1, DEFAULT_TRANSPORT_RETRIES + 2):
+            try:
+                with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
+                    response = client.post(url, params={"key": self._api_key}, json=payload)
+            except httpx.HTTPError as exc:
+                last_error = f"Could not reach Gemini: {exc}"
+                logger.warning(
+                    "Gemini transport attempt %d/%d failed: %s", attempt, DEFAULT_TRANSPORT_RETRIES + 1, last_error
+                )
+                time.sleep(self._backoff_seconds * attempt)
+                continue
 
-        if response.status_code != 200:
+            if response.status_code == 200:
+                try:
+                    body = response.json()
+                    return body["candidates"][0]["content"]["parts"][0]["text"]
+                except (json.JSONDecodeError, KeyError, IndexError) as exc:
+                    raise GeminiUnavailableError(f"Unexpected Gemini response shape: {exc}") from exc
+
+            if response.status_code in RETRYABLE_STATUS_CODES:
+                last_error = f"Gemini returned HTTP {response.status_code}: {response.text[:200]}"
+                logger.warning(
+                    "Gemini transport attempt %d/%d got retryable status %d",
+                    attempt,
+                    DEFAULT_TRANSPORT_RETRIES + 1,
+                    response.status_code,
+                )
+                time.sleep(self._backoff_seconds * attempt)
+                continue
+
+            # Non-retryable (e.g. 400 bad request, 403 bad API key): stop immediately.
             raise GeminiUnavailableError(f"Gemini returned HTTP {response.status_code}: {response.text[:200]}")
 
-        try:
-            body = response.json()
-            return body["candidates"][0]["content"]["parts"][0]["text"]
-        except (json.JSONDecodeError, KeyError, IndexError) as exc:
-            raise GeminiUnavailableError(f"Unexpected Gemini response shape: {exc}") from exc
+        raise GeminiUnavailableError(last_error or "Gemini unavailable after retries")
 
     def generate_salary_analysis(
         self, analysis_context: dict, max_attempts: int = DEFAULT_MAX_ATTEMPTS

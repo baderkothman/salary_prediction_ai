@@ -32,6 +32,7 @@ VALID_ANALYSIS = {
 
 def make_client(handler, **kwargs) -> GeminiClient:
     transport = httpx.MockTransport(handler)
+    kwargs.setdefault("backoff_seconds", 0.001)
     return GeminiClient(api_key="test-key", transport=transport, **kwargs)
 
 
@@ -125,3 +126,50 @@ def test_unexpected_response_shape_raises_unavailable_error():
     client = make_client(handler)
     with pytest.raises(GeminiUnavailableError):
         client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+
+def test_transient_503_is_retried_then_succeeds():
+    # Reproduces a real failure observed live in production: Gemini
+    # returned "high demand" 503 once, then succeeded on immediate retry.
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            return httpx.Response(503, json={"error": {"message": "high demand"}})
+        return gemini_response(json.dumps(VALID_ANALYSIS))
+
+    client = make_client(handler)
+    analysis, error = client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+    assert error is None
+    assert analysis.headline == VALID_ANALYSIS["headline"]
+    assert calls["n"] == 2
+
+
+def test_persistent_5xx_exhausts_transport_retries_then_raises():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(503, text="still overloaded")
+
+    client = make_client(handler)
+    with pytest.raises(GeminiUnavailableError):
+        client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+    assert calls["n"] == 3  # initial attempt + 2 transport retries
+
+
+def test_non_retryable_4xx_is_not_retried():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(403, text="invalid API key")
+
+    client = make_client(handler)
+    with pytest.raises(GeminiUnavailableError):
+        client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+    assert calls["n"] == 1

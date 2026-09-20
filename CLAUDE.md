@@ -78,7 +78,7 @@ python -m ml.src.data.clean           # -> ml/data/processed/salaries_clean.csv
 python -m ml.src.training.train       # -> ml/artifacts/model/{salary_model.joblib,model_metadata.json}
 uvicorn backend.app.main:app --reload --port 8000
 python -m scripts.run_pipeline        # needs the API + Ollama both running
-pytest                                 # 75 tests
+pytest                                 # 81 tests
 ruff check .
 
 # Frontend

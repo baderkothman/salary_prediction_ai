@@ -32,6 +32,7 @@ VALID_ANALYSIS = {
 
 def make_client(handler, **kwargs) -> OllamaClient:
     transport = httpx.MockTransport(handler)
+    kwargs.setdefault("backoff_seconds", 0.001)
     return OllamaClient(base_url="http://testserver", transport=transport, **kwargs)
 
 
@@ -153,3 +154,50 @@ def test_ollama_non_200_raises_unavailable_error():
     client = make_client(handler)
     with pytest.raises(OllamaUnavailableError):
         client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+
+def test_transient_503_is_retried_then_succeeds():
+    # Reproduces a real failure observed live: Ollama/Gemini-style APIs can
+    # return a transient 503 that succeeds on the very next attempt.
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            return httpx.Response(503, text="busy")
+        return ollama_response(VALID_ANALYSIS)
+
+    client = make_client(handler)
+    analysis, error = client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+    assert error is None
+    assert analysis.headline == VALID_ANALYSIS["headline"]
+    assert calls["n"] == 2
+
+
+def test_persistent_5xx_exhausts_transport_retries_then_raises():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(503, text="still busy")
+
+    client = make_client(handler)
+    with pytest.raises(OllamaUnavailableError):
+        client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+    assert calls["n"] == 3  # initial attempt + 2 transport retries
+
+
+def test_non_retryable_4xx_is_not_retried():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(400, text="bad request")
+
+    client = make_client(handler)
+    with pytest.raises(OllamaUnavailableError):
+        client.generate_salary_analysis(SAMPLE_CONTEXT)
+
+    assert calls["n"] == 1

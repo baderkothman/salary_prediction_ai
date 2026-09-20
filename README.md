@@ -2,6 +2,7 @@
 
 End-to-end ML salary prediction system for data-science jobs: a scikit-learn Decision Tree model served over FastAPI, a local-Ollama analysis pipeline, Supabase persistence, and a React + Vite + TypeScript dashboard.
 
+**Live dashboard**: [frontend-roan-xi-28.vercel.app](https://frontend-roan-xi-28.vercel.app)
 **Live API**: [salary-prediction-api-65r0.onrender.com](https://salary-prediction-api-65r0.onrender.com) (`/health`, `/model/info`, `/predict`, `/narrate` — free tier, may take 30–60s to wake up if idle; `/narrate` uses Gemini in this deployment, see Deployment below).
 
 ## Architecture
@@ -168,7 +169,7 @@ docker run -p 8000:8000 salary-prediction-api
 
 Set `CORS_ALLOWED_ORIGINS` to your deployed frontend's origin once the dashboard is deployed and expected to call this directly.
 
-**React** (`frontend/`): a standard Vite build (`npm run build` → `frontend/dist/`), deployable to any static host (Vercel, Netlify, Cloudflare Pages). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as the host's environment variables — never the service-role key. Set `VITE_API_BASE_URL` to the Render URL above so the `/predict` page's prediction and narrative both work from the deployed frontend.
+**React — live at [frontend-roan-xi-28.vercel.app](https://frontend-roan-xi-28.vercel.app)** (`frontend/`, Vercel, linked to this GitHub repo for auto-deploy on push to `main`). A standard Vite build (`npm run build` → `frontend/dist/`), also deployable to any other static host (Netlify, Cloudflare Pages). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as the host's environment variables — never the service-role key. Set `VITE_API_BASE_URL` to the Render URL above so the `/predict` page's prediction and narrative both work from the deployed frontend.
 
 ## Limitations
 

@@ -14,6 +14,7 @@ over the other.
 
 import json
 import logging
+import time
 
 import httpx
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -24,6 +25,12 @@ DEFAULT_OLLAMA_BASE_URL = "http://127.0.0.1:11434"
 DEFAULT_OLLAMA_MODEL = "llama3.2:latest"
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_MAX_ATTEMPTS = 3
+
+# Mirrors GeminiClient: a transient 5xx (e.g. Ollama busy with another
+# request) shouldn't immediately fail the whole call.
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+DEFAULT_TRANSPORT_RETRIES = 2
+DEFAULT_BACKOFF_SECONDS = 1.0
 
 ALLOWED_CHART_TYPES = {"bar", "horizontal_bar", "line"}
 MAX_INSIGHTS = 5
@@ -118,7 +125,9 @@ class OllamaClient:
         model: str = DEFAULT_OLLAMA_MODEL,
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
         transport: httpx.BaseTransport | None = None,
+        backoff_seconds: float = DEFAULT_BACKOFF_SECONDS,
     ):
+        self._backoff_seconds = backoff_seconds
         self._base_url = base_url.rstrip("/")
         self._model = model
         self._timeout = timeout_seconds
@@ -146,21 +155,41 @@ class OllamaClient:
             # not assumed from docs.
             "think": False,
         }
-        try:
-            with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
-                response = client.post(f"{self._base_url}/api/generate", json=payload)
-        except httpx.HTTPError as exc:
-            raise OllamaUnavailableError(f"Could not reach Ollama at {self._base_url}: {exc}") from exc
+        last_error: str | None = None
 
-        if response.status_code != 200:
+        for attempt in range(1, DEFAULT_TRANSPORT_RETRIES + 2):
+            try:
+                with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
+                    response = client.post(f"{self._base_url}/api/generate", json=payload)
+            except httpx.HTTPError as exc:
+                last_error = f"Could not reach Ollama at {self._base_url}: {exc}"
+                logger.warning(
+                    "Ollama transport attempt %d/%d failed: %s", attempt, DEFAULT_TRANSPORT_RETRIES + 1, last_error
+                )
+                time.sleep(self._backoff_seconds * attempt)
+                continue
+
+            if response.status_code == 200:
+                try:
+                    body = response.json()
+                except json.JSONDecodeError as exc:
+                    raise OllamaUnavailableError(f"Ollama response was not JSON: {exc}") from exc
+                return body.get("response", "")
+
+            if response.status_code in RETRYABLE_STATUS_CODES:
+                last_error = f"Ollama returned HTTP {response.status_code}: {response.text[:200]}"
+                logger.warning(
+                    "Ollama transport attempt %d/%d got retryable status %d",
+                    attempt,
+                    DEFAULT_TRANSPORT_RETRIES + 1,
+                    response.status_code,
+                )
+                time.sleep(self._backoff_seconds * attempt)
+                continue
+
             raise OllamaUnavailableError(f"Ollama returned HTTP {response.status_code}: {response.text[:200]}")
 
-        try:
-            body = response.json()
-        except json.JSONDecodeError as exc:
-            raise OllamaUnavailableError(f"Ollama response was not JSON: {exc}") from exc
-
-        return body.get("response", "")
+        raise OllamaUnavailableError(last_error or "Ollama unavailable after retries")
 
     def generate_salary_analysis(
         self, analysis_context: dict, max_attempts: int = DEFAULT_MAX_ATTEMPTS
