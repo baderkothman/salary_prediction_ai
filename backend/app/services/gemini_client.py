@@ -26,7 +26,13 @@ from scripts.llm_client import SYSTEM_PROMPT, SalaryAnalysis
 
 logger = logging.getLogger("salary_api")
 
-DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+# Not gemini-3.6-flash (the newest, Google-recommended default at the time
+# of writing): confirmed live it was under sustained "high demand" 503s
+# across multiple separate test calls. gemini-3.1-flash-lite answered
+# reliably and quickly (2-4s) every time it was tried instead, with no
+# quality loss for this narration task. Revisit if 3.6-flash's rollout
+# congestion settles down.
+DEFAULT_GEMINI_MODEL = "gemini-3.1-flash-lite"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_ATTEMPTS = 3
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
