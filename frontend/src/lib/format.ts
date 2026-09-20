@@ -53,3 +53,18 @@ export function remoteRatioLabel(value: number): string {
 export function labelFor(dict: Record<string, string>, code: string): string {
   return dict[code] ?? code;
 }
+
+// ISO 3166-1 alpha-2 -> country name, via the standard Intl.DisplayNames
+// Web API rather than a hand-maintained lookup table -- covers every real
+// country code correctly with zero new dependencies. Falls back to the
+// raw code if the runtime lacks the API or the code isn't recognized.
+const regionDisplayNames =
+  typeof Intl !== "undefined" && "DisplayNames" in Intl ? new Intl.DisplayNames(["en"], { type: "region" }) : null;
+
+export function countryLabel(code: string): string {
+  try {
+    return regionDisplayNames?.of(code) ?? code;
+  } catch {
+    return code;
+  }
+}

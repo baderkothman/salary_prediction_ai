@@ -55,8 +55,7 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.selectOptions(screen.getByLabelText("Employment"), "FT");
   await user.selectOptions(screen.getByLabelText("Company size"), "M");
   await user.selectOptions(screen.getByLabelText("Remote"), "100");
-  await user.clear(screen.getByLabelText("Work year"));
-  await user.type(screen.getByLabelText("Work year"), "2022");
+  await user.selectOptions(screen.getByLabelText("Work year"), "2022");
   await user.type(screen.getByLabelText("Job title"), "Data Scientist");
   await user.type(screen.getByLabelText("Employee residence"), "US");
   await user.type(screen.getByLabelText("Company location"), "US");
@@ -82,6 +81,27 @@ describe("PredictPage", () => {
     await fillValidForm(user);
 
     expect(submitButton).toBeEnabled();
+  });
+
+  it("offers work year as a dropdown populated from the model's valid range, not free text", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("button", { name: /predict/i })).toBeInTheDocument());
+
+    const yearSelect = screen.getByLabelText("Work year") as HTMLSelectElement;
+    expect(yearSelect.tagName).toBe("SELECT");
+    const optionValues = Array.from(yearSelect.options).map((o) => o.value);
+    // MODEL_INFO fixture: numeric_ranges.work_year = { min: 2020, max: 2022 }
+    expect(optionValues).toEqual(expect.arrayContaining(["2020", "2021", "2022"]));
+  });
+
+  it("shows human-readable country names (not just raw ISO codes) for residence/location", async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByRole("button", { name: /predict/i })).toBeInTheDocument());
+
+    // These are datalist <option> elements, not visible text nodes -- query
+    // by their value/textContent directly rather than screen.getByText.
+    const residenceOption = document.querySelector('#predict-residences option[value="US"]');
+    expect(residenceOption?.textContent).toContain("United States");
   });
 
   it("submits both prediction and narrative requests and renders a successful result", async () => {

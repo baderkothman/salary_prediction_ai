@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EXPERIENCE_LEVEL_LABELS, formatCurrency, labelFor, remoteRatioLabel } from "./format";
+import { EXPERIENCE_LEVEL_LABELS, countryLabel, formatCurrency, labelFor, remoteRatioLabel } from "./format";
 
 describe("formatCurrency", () => {
   it("formats a number as whole-dollar USD", () => {
@@ -33,5 +33,27 @@ describe("labelFor", () => {
 
   it("falls back to the raw code for an unknown value rather than throwing", () => {
     expect(labelFor(EXPERIENCE_LEVEL_LABELS, "ZZ")).toBe("ZZ");
+  });
+});
+
+describe("countryLabel", () => {
+  it.each([
+    ["US", "United States"],
+    ["DE", "Germany"],
+    ["IN", "India"],
+    ["GB", "United Kingdom"],
+  ])("maps ISO code %s to %s", (code, expected) => {
+    expect(countryLabel(code)).toBe(expected);
+  });
+
+  it("describes a syntactically valid but unassigned region code instead of throwing", () => {
+    // "ZZ" is a well-formed ISO 3166-1 alpha-2 shape but not an assigned
+    // country -- Intl.DisplayNames itself resolves this to "Unknown Region"
+    // rather than throwing, which is a reasonable display as-is.
+    expect(countryLabel("ZZ")).toBe("Unknown Region");
+  });
+
+  it("falls back to the raw input for a malformed (non-region-shaped) code rather than throwing", () => {
+    expect(countryLabel("not-a-code")).toBe("not-a-code");
   });
 });

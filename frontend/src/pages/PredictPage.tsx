@@ -15,6 +15,7 @@ import {
   COMPANY_SIZE_LABELS,
   EMPLOYMENT_TYPE_LABELS,
   EXPERIENCE_LEVEL_LABELS,
+  countryLabel,
   formatCurrency,
   labelFor,
   remoteRatioLabel,
@@ -81,7 +82,7 @@ export function PredictPage() {
     <PageContainer>
       <PageHeader
         title="Predict a Salary"
-        description="Calls the live prediction API and a local Ollama model directly -- this is the one page on this dashboard that doesn't just read pre-generated data."
+        description="Calls the live prediction API and generates a fresh narrative directly -- this is the one page on this dashboard that doesn't just read pre-generated data."
       />
 
       <form className="filter-bar" onSubmit={handleSubmit}>
@@ -160,14 +161,23 @@ export function PredictPage() {
 
           <label className="filter-field">
             <span className="filter-field__label">Work year</span>
-            <input
-              type="number"
-              min={info.numeric_ranges.work_year.min}
-              max={info.numeric_ranges.work_year.max}
+            <select
               value={form.work_year ?? ""}
               onChange={(e) => setForm({ ...form, work_year: e.target.value ? Number(e.target.value) : undefined })}
               required
-            />
+            >
+              <option value="" disabled>
+                Select…
+              </option>
+              {Array.from(
+                { length: info.numeric_ranges.work_year.max - info.numeric_ranges.work_year.min + 1 },
+                (_, i) => info.numeric_ranges.work_year.min + i
+              ).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="filter-field filter-field--grow">
@@ -179,12 +189,16 @@ export function PredictPage() {
               placeholder="e.g. Data Scientist"
               required
             />
-            <datalist id="predict-job-titles">
-              {info.categorical_domains.job_title.map((v) => (
-                <option key={v} value={v} />
-              ))}
-            </datalist>
           </label>
+          {/* Sibling of the label, not a child: the list/id attributes associate
+              input <-> datalist regardless of DOM nesting. Keeping it outside also
+              avoids a real testing-library/jsdom quirk where a nested datalist's
+              option text pollutes the ancestor label's computed accessible name. */}
+          <datalist id="predict-job-titles">
+            {info.categorical_domains.job_title.map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
 
           <label className="filter-field">
             <span className="filter-field__label">Employee residence</span>
@@ -192,15 +206,17 @@ export function PredictPage() {
               list="predict-residences"
               value={form.employee_residence ?? ""}
               onChange={(e) => setForm({ ...form, employee_residence: e.target.value || undefined })}
-              placeholder="e.g. US"
+              placeholder="e.g. United States"
               required
             />
-            <datalist id="predict-residences">
-              {info.categorical_domains.employee_residence.map((v) => (
-                <option key={v} value={v} />
-              ))}
-            </datalist>
           </label>
+          <datalist id="predict-residences">
+            {info.categorical_domains.employee_residence.map((v) => (
+              <option key={v} value={v}>
+                {countryLabel(v)} ({v})
+              </option>
+            ))}
+          </datalist>
 
           <label className="filter-field">
             <span className="filter-field__label">Company location</span>
@@ -208,15 +224,17 @@ export function PredictPage() {
               list="predict-locations"
               value={form.company_location ?? ""}
               onChange={(e) => setForm({ ...form, company_location: e.target.value || undefined })}
-              placeholder="e.g. US"
+              placeholder="e.g. United States"
               required
             />
-            <datalist id="predict-locations">
-              {info.categorical_domains.company_location.map((v) => (
-                <option key={v} value={v} />
-              ))}
-            </datalist>
           </label>
+          <datalist id="predict-locations">
+            {info.categorical_domains.company_location.map((v) => (
+              <option key={v} value={v}>
+                {countryLabel(v)} ({v})
+              </option>
+            ))}
+          </datalist>
 
           <button type="submit" className="button" disabled={!isComplete || predictMutation.isPending}>
             {predictMutation.isPending ? "Predicting…" : "Predict"}
@@ -246,9 +264,9 @@ export function PredictPage() {
           </section>
 
           <section>
-            <h2 className="section-title">Analyst narrative (local Ollama)</h2>
+            <h2 className="section-title">Analyst narrative</h2>
             {narrateMutation.isPending && (
-              <EmptyState title="Generating analysis…" description="A local model is writing this -- usually 10-25 seconds." />
+              <EmptyState title="Generating analysis…" description="An LLM is writing this now -- usually a few seconds, occasionally longer." />
             )}
             {narrateMutation.isError && (
               <ErrorState

@@ -1,4 +1,11 @@
-import { EMPLOYMENT_TYPE_LABELS, COMPANY_SIZE_LABELS, EXPERIENCE_LEVEL_LABELS, labelFor, remoteRatioLabel } from "../lib/format";
+import {
+  COMPANY_SIZE_LABELS,
+  EMPLOYMENT_TYPE_LABELS,
+  EXPERIENCE_LEVEL_LABELS,
+  countryLabel,
+  labelFor,
+  remoteRatioLabel,
+} from "../lib/format";
 import type { SalaryResult } from "../lib/schemas";
 
 export function PredictionContextGrid({ result }: { result: SalaryResult }) {
@@ -9,8 +16,18 @@ export function PredictionContextGrid({ result }: { result: SalaryResult }) {
     ["Company size", labelFor(COMPANY_SIZE_LABELS, result.company_size)],
     ...(result.remote_ratio !== null ? ([["Remote arrangement", remoteRatioLabel(result.remote_ratio)]] as [string, string][]) : []),
     ...(result.work_year !== null ? ([["Work year", String(result.work_year)]] as [string, string][]) : []),
-    ...(result.employee_residence ? ([["Employee residence", result.employee_residence]] as [string, string][]) : []),
-    ...(result.company_location ? ([["Company location", result.company_location]] as [string, string][]) : []),
+    ...(result.employee_residence
+      ? ([["Employee residence", `${countryLabel(result.employee_residence)} (${result.employee_residence})`]] as [
+          string,
+          string,
+        ][])
+      : []),
+    ...(result.company_location
+      ? ([["Company location", `${countryLabel(result.company_location)} (${result.company_location})`]] as [
+          string,
+          string,
+        ][])
+      : []),
   ];
 
   return (
