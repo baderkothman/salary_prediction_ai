@@ -63,7 +63,7 @@ export function PredictPage() {
     return (
       <PageContainer>
         <PageHeader title="Predict a Salary" />
-        <ErrorState message="Could not reach the prediction API. Is it running (uvicorn backend.app.main:app)?" />
+        <ErrorState message="Could not reach the prediction API. Either it isn't running, or its CORS_ALLOWED_ORIGINS doesn't include this site's origin yet -- browsers deliberately hide which one from JavaScript." />
       </PageContainer>
     );
   }
