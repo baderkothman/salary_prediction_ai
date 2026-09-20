@@ -13,3 +13,6 @@ ignore = [
               # third-party model without importing pydantic just for the exception type, since
               # a malformed LLM generation must be retried/reported, never allowed to crash the run.
 ]
+"backend/app/services/gemini_client.py" = [
+    "BLE001", # Same reason as scripts/llm_client.py above -- mirrors its retry/validate loop.
+]

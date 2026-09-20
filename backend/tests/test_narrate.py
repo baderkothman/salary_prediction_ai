@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from backend.app.api.dependencies import get_narrator
 from backend.app.core.errors import NarrationUnavailableError
 from backend.app.main import app
+from backend.app.services.gemini_client import GeminiClient
 from backend.app.services.narrator import NarratorService
 from backend.app.services.predictor import predictor_service
 from scripts.build_context import build_analysis_context
@@ -36,15 +37,41 @@ VALID_PARAMS = {
 
 
 def make_fake_narrator(handler) -> NarratorService:
-    narrator = NarratorService(dataset_path=Path("unused"), ollama_base_url="http://testserver", ollama_model="test")
+    narrator = NarratorService(
+        dataset_path=Path("unused"),
+        provider="ollama",
+        ollama_base_url="http://testserver",
+        ollama_model="test",
+        gemini_api_key="",
+        gemini_model="test",
+    )
     narrator._df = pd.read_csv("ml/data/processed/salaries_clean.csv")
     narrator._build_context = build_analysis_context
     narrator._client = OllamaClient(base_url="http://testserver", transport=httpx.MockTransport(handler))
     return narrator
 
 
+def make_fake_gemini_narrator(handler) -> NarratorService:
+    narrator = NarratorService(
+        dataset_path=Path("unused"),
+        provider="gemini",
+        ollama_base_url="unused",
+        ollama_model="unused",
+        gemini_api_key="test-key",
+        gemini_model="test",
+    )
+    narrator._df = pd.read_csv("ml/data/processed/salaries_clean.csv")
+    narrator._build_context = build_analysis_context
+    narrator._client = GeminiClient(api_key="test-key", transport=httpx.MockTransport(handler))
+    return narrator
+
+
 def ollama_response(body: dict) -> httpx.Response:
     return httpx.Response(200, json={"model": "test", "response": json.dumps(body), "done": True})
+
+
+def gemini_response(body: dict) -> httpx.Response:
+    return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": json.dumps(body)}]}}]})
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -114,6 +141,31 @@ def test_narrate_invalid_input_returns_422_without_calling_ollama(client):
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "INVALID_INPUT"
     assert calls["n"] == 0  # input validation must reject before ever calling Ollama
+
+
+def test_narrate_gemini_provider_returns_narrative(client):
+    app.dependency_overrides[get_narrator] = lambda: make_fake_gemini_narrator(
+        lambda r: gemini_response(VALID_ANALYSIS_JSON)
+    )
+
+    response = client.get("/narrate", params=VALID_PARAMS)
+
+    assert response.status_code == 200
+    assert response.json()["headline"] == VALID_ANALYSIS_JSON["headline"]
+
+
+def test_narrate_gemini_unreachable_returns_503_with_gemini_code(client):
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("connection refused", request=request)
+
+    app.dependency_overrides[get_narrator] = lambda: make_fake_gemini_narrator(handler)
+
+    response = client.get("/narrate", params=VALID_PARAMS)
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error"]["code"] == "GEMINI_UNAVAILABLE"
+    assert "Gemini" in body["error"]["message"]
 
 
 def test_narrate_returns_503_when_narrator_not_loaded(client):

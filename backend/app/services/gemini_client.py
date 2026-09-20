@@ -1,0 +1,115 @@
+"""Cloud LLM narrator for the DEPLOYED backend only, selected via
+NARRATOR_PROVIDER=gemini (backend/app/core/config.py). Used when Ollama
+isn't reachable -- e.g. Render's servers can't reach a developer's local
+machine. The local generation pipeline (scripts/llm_client.py, used by
+scripts/run_pipeline.py to populate the published Supabase dataset)
+always uses local Ollama regardless of this setting; this is a separate,
+backend-only code path.
+
+Deliberately reuses SYSTEM_PROMPT and the SalaryAnalysis/ChartSpec Pydantic
+schema from scripts/llm_client.py rather than duplicating them, so both
+providers are validated identically and produce interchangeable output.
+
+Privacy note (documented, not silent): when this path is used, the
+comparison-group statistics and job attributes in the analysis context
+are sent to Google's Gemini API for that request. See README.md's
+Deployment section.
+"""
+
+import json
+import logging
+
+import httpx
+
+from scripts.llm_client import SYSTEM_PROMPT, SalaryAnalysis
+
+logger = logging.getLogger("salary_api")
+
+DEFAULT_GEMINI_MODEL = "gemini-3.6-flash"
+DEFAULT_TIMEOUT_SECONDS = 30.0
+DEFAULT_MAX_ATTEMPTS = 3
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+
+
+class GeminiUnavailableError(RuntimeError):
+    """Gemini could not be reached or returned a non-200 response --
+    distinct from a malformed generation, mirroring OllamaUnavailableError."""
+
+
+class GeminiClient:
+    def __init__(
+        self,
+        api_key: str,
+        model: str = DEFAULT_GEMINI_MODEL,
+        timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+        transport: httpx.BaseTransport | None = None,
+    ):
+        self._api_key = api_key
+        self._model = model
+        self._timeout = timeout_seconds
+        self._transport = transport
+
+    def _call(self, analysis_context: dict) -> str:
+        # Same framing as OllamaClient: a bare JSON blob as the whole
+        # prompt reads as "here is JSON" rather than "analyze this."
+        user_prompt = (
+            "Here are the computed facts for this salary prediction:\n\n"
+            f"{json.dumps(analysis_context, indent=2)}\n\n"
+            "Write your analysis now, following the JSON schema and rules from the system prompt."
+        )
+        payload = {
+            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "contents": [{"parts": [{"text": user_prompt}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                # Confirmed against the real API: this is a reasoning model
+                # that otherwise spends ~200+ tokens "thinking" per call with
+                # no quality benefit for this constrained JSON task.
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
+        }
+        url = f"{GEMINI_API_BASE}/models/{self._model}:generateContent"
+
+        try:
+            with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
+                response = client.post(url, params={"key": self._api_key}, json=payload)
+        except httpx.HTTPError as exc:
+            raise GeminiUnavailableError(f"Could not reach Gemini: {exc}") from exc
+
+        if response.status_code != 200:
+            raise GeminiUnavailableError(f"Gemini returned HTTP {response.status_code}: {response.text[:200]}")
+
+        try:
+            body = response.json()
+            return body["candidates"][0]["content"]["parts"][0]["text"]
+        except (json.JSONDecodeError, KeyError, IndexError) as exc:
+            raise GeminiUnavailableError(f"Unexpected Gemini response shape: {exc}") from exc
+
+    def generate_salary_analysis(
+        self, analysis_context: dict, max_attempts: int = DEFAULT_MAX_ATTEMPTS
+    ) -> tuple[SalaryAnalysis | None, str | None]:
+        """Same contract as OllamaClient.generate_salary_analysis: returns
+        (analysis, error), raises GeminiUnavailableError for total
+        unreachability, retries malformed/invalid generations up to
+        max_attempts before giving up."""
+        last_error: str | None = None
+
+        for attempt in range(1, max_attempts + 1):
+            raw_text = self._call(analysis_context)
+            try:
+                parsed = json.loads(raw_text)
+            except json.JSONDecodeError as exc:
+                last_error = f"attempt {attempt}: invalid JSON: {exc}"
+                logger.warning(last_error)
+                continue
+
+            try:
+                analysis = SalaryAnalysis.model_validate(parsed)
+            except Exception as exc:  # pydantic.ValidationError; kept broad deliberately
+                last_error = f"attempt {attempt}: schema validation failed: {exc}"
+                logger.warning(last_error)
+                continue
+
+            return analysis, None
+
+        return None, last_error or "exhausted generation attempts"

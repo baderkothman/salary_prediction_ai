@@ -2,7 +2,7 @@
 
 End-to-end ML salary prediction system for data-science jobs: a scikit-learn Decision Tree model served over FastAPI, a local-Ollama analysis pipeline, Supabase persistence, and a React + Vite + TypeScript dashboard.
 
-**Live API**: [salary-prediction-api-65r0.onrender.com](https://salary-prediction-api-65r0.onrender.com) (`/health`, `/model/info`, `/predict` — free tier, may take 30–60s to wake up if idle). Frontend not yet deployed.
+**Live API**: [salary-prediction-api-65r0.onrender.com](https://salary-prediction-api-65r0.onrender.com) (`/health`, `/model/info`, `/predict`, `/narrate` — free tier, may take 30–60s to wake up if idle; `/narrate` uses Gemini in this deployment, see Deployment below).
 
 ## Architecture
 
@@ -161,9 +161,14 @@ docker build -f backend/Dockerfile -t salary-prediction-api .
 docker run -p 8000:8000 salary-prediction-api
 ```
 
-`/health`, `/model/info`, and `/predict` work standalone with no environment variables. `/narrate` additionally needs `ml/data/processed/salaries_clean.csv` and a reachable Ollama instance — neither is available on this free-tier deployment (Ollama only runs on a local machine), so `/narrate` there correctly returns `503 NARRATOR_UNAVAILABLE` rather than crashing; it works when run locally per the setup above. Set `CORS_ALLOWED_ORIGINS` to your deployed frontend's origin once the dashboard is deployed and expected to call this directly.
+`/health`, `/model/info`, and `/predict` work standalone with no environment variables. `/narrate` additionally needs `ml/data/processed/salaries_clean.csv` (baked into the image) and a narrator provider:
 
-**React** (`frontend/`): a standard Vite build (`npm run build` → `frontend/dist/`), deployable to any static host (Vercel, Netlify, Cloudflare Pages). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as the host's environment variables — never the service-role key. Set `VITE_API_BASE_URL` to the Render URL above if you want the `/predict` page's prediction (not narrative — see above) to work from the deployed frontend. Not yet deployed — pending your go-ahead on a static host.
+- **Local dev**: `NARRATOR_PROVIDER=ollama` (default) — needs Ollama running on the same machine. Used unconditionally by the offline generation pipeline (`scripts/run_pipeline.py`) regardless of this setting.
+- **This Render deployment**: `NARRATOR_PROVIDER=gemini` + `GEMINI_API_KEY` — Render's servers can't reach a developer's local Ollama instance, so the live `/predict` page's on-demand narrative uses Google's Gemini API instead (`backend/app/services/gemini_client.py`). This is a deliberate, user-requested trade-off: the comparison-group statistics and job attributes for that one request are sent to Google's API. The pre-generated dataset that Overview/Explore/ResultDetail read from Supabase is entirely unaffected — it was produced by the local Ollama pipeline before any of this existed.
+
+Set `CORS_ALLOWED_ORIGINS` to your deployed frontend's origin once the dashboard is deployed and expected to call this directly.
+
+**React** (`frontend/`): a standard Vite build (`npm run build` → `frontend/dist/`), deployable to any static host (Vercel, Netlify, Cloudflare Pages). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as the host's environment variables — never the service-role key. Set `VITE_API_BASE_URL` to the Render URL above so the `/predict` page's prediction and narrative both work from the deployed frontend.
 
 ## Limitations
 

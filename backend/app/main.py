@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
         # /narrate degrades to a clean 503 (get_narrator dependency) rather
         # than the app failing to boot -- a deployment without the cleaned
         # dataset or scripts/ still serves /predict, /health, /model/info.
-        logger.warning("Narrator service unavailable at startup (dataset missing or scripts/ not present)")
+        logger.exception("Narrator service unavailable at startup (dataset missing, scripts/ not present, or bad provider config)")
 
     yield
 

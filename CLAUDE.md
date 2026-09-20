@@ -50,7 +50,8 @@ frontend/src/
 backend/
   app/{core,schemas,services,api}/  config.py, errors.py (stable {error:{code,message,details}} shape),
                                      predictor.py (loads joblib+metadata, zero ml/ import),
-                                     narrator.py (only /narrate; imports scripts/, needs Ollama),
+                                     narrator.py (only /narrate; imports scripts/, provider-switchable),
+                                     gemini_client.py (cloud narrator alternative, used when NARRATOR_PROVIDER=gemini),
                                      routes.py, dependencies.py
   requirements.txt   deployable set (includes httpx for narrator.py); Dockerfile builds from repo root
 ml/
@@ -77,7 +78,7 @@ python -m ml.src.data.clean           # -> ml/data/processed/salaries_clean.csv
 python -m ml.src.training.train       # -> ml/artifacts/model/{salary_model.joblib,model_metadata.json}
 uvicorn backend.app.main:app --reload --port 8000
 python -m scripts.run_pipeline        # needs the API + Ollama both running
-pytest                                 # 66 tests
+pytest                                 # 75 tests
 ruff check .
 
 # Frontend
@@ -108,6 +109,7 @@ supabase login --token <token> && supabase link --project-ref <ref> && supabase 
 ## Deviations from the original spec docs (documented, not silent)
 
 - **Live "Prediction page" (`/predict`) exists**, calling the backend directly from the browser. This was initially built and then deliberately *omitted* because it contradicts `architecture.md` invariant #7 and `prd.md`'s non-goal ("React-to-FastAPI prediction requests as part of the dashboard flow") — but the user then explicitly asked for exactly this feature, which is a legitimate override of that call: the user is the final authority on product scope, not the spec docs. Implemented as narrowly as possible:
-  - New backend `GET /narrate` endpoint (`backend/app/services/narrator.py`) — the *only* thing in `backend/` that imports from `scripts/` (`build_context.py`, `llm_client.py`) and needs Ollama reachable. `/health`, `/model/info`, `/predict` are untouched and still fully independent per invariant #8; `/narrate` degrades to a clean 503 rather than failing app startup if the dataset or `scripts/` isn't present.
+  - New backend `GET /narrate` endpoint (`backend/app/services/narrator.py`) — the *only* thing in `backend/` that imports from `scripts/` (`build_context.py`, and `llm_client.py` when `NARRATOR_PROVIDER=ollama`). `/health`, `/model/info`, `/predict` are untouched and still fully independent per invariant #8; `/narrate` degrades to a clean 503 rather than failing app startup if the dataset or provider isn't reachable.
+  - **`NARRATOR_PROVIDER` switches the narrator between `ollama` (default, local dev) and `gemini`** (`backend/app/services/gemini_client.py`) — added because a deployed backend (Render) can't reach a developer's local Ollama instance. This is a second explicit user override: prd.md's original goal was local-LLM-only with no external provider, but that goal was scoped to the offline generation pipeline; `scripts/llm_client.py` (used by `scripts/run_pipeline.py`) is unconditionally still Ollama-only regardless of this setting — only the live, on-demand `/narrate` path swaps providers. Both clients implement the same `generate_salary_analysis(context) -> (SalaryAnalysis | None, error)` shape and share the same Pydantic schema/system prompt from `scripts/llm_client.py`, so `NarratorService.narrate()` doesn't care which one is active. Gemini's `thinkingConfig.thinkingBudget=0` is set deliberately — confirmed live that it cuts token usage ~7x with no quality loss for this constrained JSON task.
   - Every other page is still Supabase-only. This is a single, contained, documented exception — not a reversal of the architecture.
 - **Directory layout** (`frontend/`/`backend/`/`ml/`/`scripts/`) supersedes `architecture.md` §4's `apps/`/`pipeline/` naming, again per a later master prompt with no strong technical reason to refuse it.

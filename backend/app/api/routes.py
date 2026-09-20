@@ -116,17 +116,20 @@ def narrate(
 
     predicted_salary = predictor.predict_one(inputs)
 
+    provider_label = "Ollama" if narrator.provider == "ollama" else "Gemini"
+
     try:
         analysis, error, context = narrator.narrate(inputs, predicted_salary)
-    except Exception as exc:  # OllamaUnavailableError from scripts.llm_client, imported lazily
+    except Exception as exc:  # OllamaUnavailableError / GeminiUnavailableError, imported lazily
         raise NarrationUnavailableError(
-            code="OLLAMA_UNAVAILABLE", message=f"Could not reach the local Ollama instance: {exc}"
+            code=f"{narrator.provider.upper()}_UNAVAILABLE",
+            message=f"Could not reach {provider_label}: {exc}",
         ) from exc
 
     if analysis is None:
         raise NarrationUnavailableError(
             code="NARRATIVE_GENERATION_FAILED",
-            message=f"Ollama did not return a usable analysis after retries: {error}",
+            message=f"{provider_label} did not return a usable analysis after retries: {error}",
         )
 
     return NarrateResponse(
