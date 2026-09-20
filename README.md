@@ -2,6 +2,8 @@
 
 End-to-end ML salary prediction system for data-science jobs: a scikit-learn Decision Tree model served over FastAPI, a local-Ollama analysis pipeline, Supabase persistence, and a React + Vite + TypeScript dashboard.
 
+**Live API**: [salary-prediction-api-65r0.onrender.com](https://salary-prediction-api-65r0.onrender.com) (`/health`, `/model/info`, `/predict` — free tier, may take 30–60s to wake up if idle). Frontend not yet deployed.
+
 ## Architecture
 
 ```mermaid
@@ -152,18 +154,16 @@ Current metrics (see `ml/artifacts/model/model_metadata.json` for the live value
 
 The FastAPI service and the React dashboard deploy independently.
 
-**FastAPI** (`backend/Dockerfile`, builds from the repo root):
+**FastAPI — live at [salary-prediction-api-65r0.onrender.com](https://salary-prediction-api-65r0.onrender.com)** (Render, free tier — the first request after idling can take 30–60s to wake the instance). Deployed from `backend/Dockerfile` via `render.yaml` (Render Blueprint), building from the repo root:
 
 ```bash
 docker build -f backend/Dockerfile -t salary-prediction-api .
 docker run -p 8000:8000 salary-prediction-api
 ```
 
-Deploy the resulting image to any container host (Render, Railway, Fly.io, etc.). It needs no environment variables to boot (the model path defaults to the artifact baked into the image); set `CORS_ALLOWED_ORIGINS` to your deployed frontend's origin if the dashboard will ever call it directly.
+`/health`, `/model/info`, and `/predict` work standalone with no environment variables. `/narrate` additionally needs `ml/data/processed/salaries_clean.csv` and a reachable Ollama instance — neither is available on this free-tier deployment (Ollama only runs on a local machine), so `/narrate` there correctly returns `503 NARRATOR_UNAVAILABLE` rather than crashing; it works when run locally per the setup above. Set `CORS_ALLOWED_ORIGINS` to your deployed frontend's origin once the dashboard is deployed and expected to call this directly.
 
-**React** (`frontend/`): a standard Vite build (`npm run build` → `frontend/dist/`), deployable to any static host (Vercel, Netlify, Cloudflare Pages). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as the host's environment variables — never the service-role key.
-
-> Live deployment to a hosting provider requires an account on that provider, which this repository's automated setup does not have access to. Everything up to a `docker build`/`npm run build` has been verified locally; the actual `docker run` → public URL and `vercel deploy`/`netlify deploy` steps are for you to run with your own account.
+**React** (`frontend/`): a standard Vite build (`npm run build` → `frontend/dist/`), deployable to any static host (Vercel, Netlify, Cloudflare Pages). Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` as the host's environment variables — never the service-role key. Set `VITE_API_BASE_URL` to the Render URL above if you want the `/predict` page's prediction (not narrative — see above) to work from the deployed frontend. Not yet deployed — pending your go-ahead on a static host.
 
 ## Limitations
 

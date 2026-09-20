@@ -83,7 +83,8 @@ ruff check .
 # Frontend
 cd frontend && npm install && npm run dev && npm run build && npm test   # 48 tests (vitest)
 
-# Docker (backend, independent deployment)
+# Docker (backend, independent deployment) -- live at
+# https://salary-prediction-api-65r0.onrender.com (Render free tier, render.yaml blueprint)
 docker build -f backend/Dockerfile -t salary-prediction-api .   # from repo root
 docker run -p 8000:8000 salary-prediction-api
 
